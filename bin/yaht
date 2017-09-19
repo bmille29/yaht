@@ -1,0 +1,51 @@
+#!/usr/bin/env node
+'use strict';
+
+// Set Nodejs max thread pool (default 4, max 128)
+//   http://docs.libuv.org/en/v1.x/threadpool.html
+process.env.UV_THREADPOOL_SIZE = 128;
+
+// Load modules
+
+const Bossy = require('bossy');
+const Fs = require('fs');
+const Path = require('path');
+const Rejoice = require('rejoice');
+
+
+// Declare internals
+
+const internals = {};
+
+const directory = Path.resolve(`${__dirname}/../cfg`);
+const configs = Fs.readdirSync(directory).map((file) => { return file.replace(/\.json$/, ''); });
+
+const definition = {
+    h: { alias: 'help', description: 'Show help', type: 'boolean' },
+    c: { alias: ['config', 'configuration'], description: 'Configuration file selection', type: 'string' },
+    e: { alias: ['env', 'environment'], description: 'Environment (shorthand for config file selection)', type: 'string', valid: configs }
+};
+
+const args = Bossy.parse(definition);
+
+if (args instanceof Error) {
+    console.error(args.message);
+    process.exit(1);
+}
+
+if (args.help) {
+    console.log(Bossy.usage(definition, './bin/index.js [options]'));
+    process.exit();
+}
+
+const manifest = Path.resolve(args.config || `${directory}/${args.env}.json`);
+
+// Create catbox storage directory
+if (!Fs.existsSync(`${__dirname}/../storage`)) {
+    Fs.mkdirSync(`${__dirname}/../storage`);
+}
+
+console.log(`Attemping to start server...`);
+console.log(`  Using manifest: ${manifest}`);
+
+Rejoice.start({ args: ['-c', manifest, '-p', directory] });
